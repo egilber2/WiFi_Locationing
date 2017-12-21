@@ -3,10 +3,11 @@ title: "Wi-Fi Positioning"
 output: 
   html_notebook:
     highlight: tango
-    theme: spacelab
+    theme: cerulean
     toc: yes
     toc_float: yes
     toc_depth: 4
+    
 ---
 
 
@@ -146,6 +147,9 @@ scatterplot3d(wifi_trainData$LONGITUDE, wifi_trainData$LATITUDE, wifi_trainData$
               col.sub='blue',
               xlab='Longitude', ylab='Latitude',zlab = 'Building Floor')
 
+```
+```{r}
+hist(table(wifi_trainData$ID))
 ```
 
 
