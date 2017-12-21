@@ -1,0 +1,244 @@
+---
+title: "Wi-Fi Positioning"
+output: 
+  html_notebook:
+    highlight: tango
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    toc_depth: 4
+---
+
+
+```{r setup, include=FALSE }
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE)
+```
+##Introduction
+
+
+##1. Frame the Problem
+
+##2. Collect the Data
+
+
+```{r  message=FALSE, warning=FALSE}
+library(caret)      #R modeling workhorse & ggplot2
+library(tidyverse)  #Package for tidying datalibrary(magrittr)   #Enables piping
+#library(Hmisc)      #for descriptive statistics
+library(parallel)
+library(doParallel)
+library(kknn)       #Weighted k-NN
+library(kernlab)    #For SVMLinear method
+library(rgl)        #for 3D plotting
+library(scatterplot3d)
+library(scales)
+library(ranger)     #Random forest
+library(C50)        #C5.0 decision tree with boosting
+library(e1071)      #Randome forest
+#library(doMC)
+library(broom)
+library(kableExtra)
+```
+
+```{r  message=FALSE, results='hide', warning=FALSE}
+##-- Training Data
+wifi_trainData <- read_csv('trainingData.csv', na='100')
+dim(wifi_trainData)
+```
+
+##3. Process the Data
+
+
+```{r}
+#-convert features to numeric
+wifi_trainData <- sapply(wifi_trainData, as.numeric)
+wifi_trainData <- as_tibble(wifi_trainData)
+```
+
+```{r}
+#add count of WAP's detected
+wifi_trainData$WAP_num <- apply(wifi_trainData[,1:520], 1, function(x) length(which(!is.na(x))))
+```
+
+```{r}
+#convert categoricals to factor
+wifi_trainData$BUILDINGID <- factor(wifi_trainData$BUILDINGID)
+wifi_trainData$SPACEID <- factor(wifi_trainData$SPACEID)
+wifi_trainData$RELATIVEPOSITION <- factor(wifi_trainData$RELATIVEPOSITION)
+wifi_trainData$FLOOR <- factor(wifi_trainData$FLOOR)
+```
+
+```{r}
+#recode floor factor level names
+wifi_trainData$FLOOR <- recode(wifi_trainData$FLOOR, '0'=1, '1'=2, '2'=3, '3'=4, '4'=5)
+wifi_trainData$FLOOR <- factor(wifi_trainData$FLOOR)
+table(wifi_trainData$FLOOR)
+```
+
+
+```{r}
+#-Filter on hallway positions
+wifi_trainData <- filter(wifi_trainData, wifi_trainData$RELATIVEPOSITION==2)
+```
+
+
+```{r}
+##consolidate position identifiers
+wifi_trainData$ID <- wifi_trainData %>% 
+  group_indices(BUILDINGID, FLOOR, SPACEID)
+
+wifi_trainData$ID <- factor(as.numeric(wifi_trainData$ID))
+```
+
+```{r message=FALSE}
+#remove columns with all NA values
+wifi_trainData <- wifi_trainData[,colSums(is.na(wifi_trainData[1:16608,]))<nrow(wifi_trainData[1:16608,])]
+
+#glimpse(wifi_trainData)  #removes 76 columns
+
+```
+
+
+```{r}
+#remove rows with all NA values
+wifi_trainData <- wifi_trainData[rowSums(is.na(wifi_trainData[,1:444])) != ncol(wifi_trainData[,1:444]),]
+#removes 55 rows
+```
+
+```{r}
+#convert NA's to -110
+wifi_trainData[is.na(wifi_trainData)] <- -110
+```
+
+```{r}
+#Subset by building 2
+wifi_B2 <- filter(wifi_trainData, BUILDINGID==2)
+
+wifi_B2mod <- select(wifi_B2,-RELATIVEPOSITION, -USERID,
+                     -TIMESTAMP, -LONGITUDE, -LATITUDE, -BUILDINGID, -SPACEID)
+
+nlevels(wifi_B2mod$ID) #731 levels
+
+```
+```{r}
+#remove empty factor levels
+wifi_B2mod$ID <- factor(wifi_B2mod$ID)
+nlevels(wifi_B2mod$ID) #313 levels
+hist(table(wifi_B2mod$ID))
+```
+
+##4. Explore the Data
+
+```{r}
+#3D plot of data- all buildings & flooors
+scatterplot3d(wifi_trainData$LONGITUDE, wifi_trainData$LATITUDE, wifi_trainData$FLOOR,
+              type='p',
+              highlight.3d = FALSE,
+              color='blue',
+              angle=155,
+              pch=16,
+              box=FALSE,
+              main = "Location Reference Points Across Three Buildings \nof UJIIndoorLoc Data Set",
+              sub='Before Preprocessing',
+              cex.lab = 1,
+              cex.main=1,
+              cex.sub=1,
+              col.sub='blue',
+              xlab='Longitude', ylab='Latitude',zlab = 'Building Floor')
+
+```
+
+
+```{r}
+#Distribution of WAP count by building and floor
+ggplot(wifi_trainData, aes(x=WAP_num, fill=FLOOR)) + geom_bar() +
+  facet_grid(BUILDINGID~.) +
+  theme(text = element_text(size=20)) +
+  ggtitle('Distribution of Detected Wireless Access Points by Building')+
+  labs(x="Number of WAP's Detected by Building", y= 'Counts by Building Floor' ) +
+  theme(panel.border=element_rect(colour='black', fill=NA))
+```
+
+
+##5.  Build Predictive Models {.tabset .tabset-pills}
+
+```{r}
+wifi_train <- select(wifi_trainData, -RELATIVEPOSITION, -USERID, -WAP_num, -PHONEID,
+                     -TIMESTAMP, -LONGITUDE, -LATITUDE, -BUILDINGID, -SPACEID, -FLOOR)
+```
+
+
+```{r}
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats=3, allowParallel = TRUE)
+
+```
+###5.1 kNN
+
+```{r eval=FALSE}
+registerDoMC(cores=16)  #for AWS EC2 use
+#cluster <- makeCluster(detectCores() - 1)
+#registerDoParallel(cluster)
+
+
+
+set.seed(7811)
+
+knn_grid <- expand.grid(.k=c(1:5))
+
+knn_fit <- train(ID~., data=wifi_train, 
+                        method='knn',
+                        preProcess = c('zv'),
+                        tuneGrid=knn_grid,
+                        tuneLength=10,
+                        trControl = fitControl)
+
+#stopCluster(cluster)
+#registerDoSEQ()
+```
+
+```{r}
+knn_fit$results
+```
+### 5.2 Decision Tree
+```{r eval=FALSE}
+registerDoMC(cores=16)
+
+set.seed(7811)
+dtree_fit <- train(ID~., wifi_train,
+                          method='C5.0', 
+                          preProcess = c('zv'),
+                          trControl = fitControl)
+```
+
+```{r}
+dtree_fit$results
+```
+### 5.3 Random Forest
+```{r eval=FALSE}
+registerDoMC(cores=16)
+
+set.seed(7811)
+
+rf_fit <- train(ID~., wifi_train,
+                       method='ranger', 
+                       preProcess = c('zv'),
+                       trControl = fitControl)
+```
+
+```{r}
+rf_fit$results
+```
+
+
+
+
+##5.4  Summary of Results
+
+```{r}
+results <- resamples(list(kNN=knn_fit, RF=rf_fit, C5.0=dtree_fit))
+
+summary(results)
+bwplot(results)
+dotplot(results)
+```
+
