@@ -39,6 +39,7 @@ library(e1071)      #Randome forest
 #library(doMC)
 library(broom)
 library(kableExtra)
+
 ```
 
 ```{r  message=FALSE, results='hide', warning=FALSE}
@@ -244,5 +245,88 @@ results <- resamples(list(kNN=knn_fit, RF=rf_fit, C5.0=dtree_fit))
 summary(results)
 bwplot(results)
 dotplot(results)
+```
+
+```{r}
+#Select instances that were correctly and incorrectly classifed in rf model
+rf_hit <- wifi_trainData[which(rf_fit$finalModel$predictions==wifi_trainData$ID),]
+rf_mis <- wifi_trainData[which(rf_fit$finalModel$predictions != wifi_trainData$ID),]
+
+hist(table(rf_hit$ID))
+hist(table(rf_mis$ID))
+```
+```{r}
+s3d <- scatterplot3d(rf_hit$LONGITUDE, rf_hit$LATITUDE, rf_hit$FLOOR,
+                     type='p',
+                     highlight.3d = FALSE,
+                     color='blue',
+                     angle=165,
+                     pch=5,
+                     box=FALSE,
+                     zlim=c(1,5),
+                     main = 'Correctly and Incorrectly Classified Locations in Building 2 Test Set',
+                     sub='Random Forest Model',
+                     xlab='Longitude', ylab='Latitude',zlab = 'Building 2 Floor',
+                     cex.lab = 1.5,
+                     cex.main=1.5,
+                     cex.sub=1.5,
+                     col.sub='blue')
+#s3d$points(rf_mis$LONGITUDE, rf_mis$LATITUDE, #rf_mis$FLOOR,col='red', pch=16)
+```
+
+```{r}
+ggplot(rf_hit, aes(x=factor(PHONEID))) + geom_bar(fill='blue') +
+  ggtitle('Count of Correctly Classified by Phone ID')
+phone_hit <- tidy(table(rf_hit$PHONEID))
+names(phone_hit) <- c('PhoneID', 'Count_hit')
+```
+
+
+```{r}
+ggplot(rf_mis, aes(x=factor(PHONEID))) + geom_bar(fill='blue') +
+  ggtitle('Count of Misclassified by Phone ID')
+phone_mis <- tidy(table(rf_mis$PHONEID))
+names(phone_mis) <- c('PhoneID', 'Count_miss')
+
+```
+```{r}
+x <- merge(x=phone_hit, y=phone_mis, by = 'PhoneID')
+y <- mutate(x, Percent_miss = round(Count_miss/(Count_miss + Count_hit)*100,3))
+```
+```{r}
+ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
+  geom_bar(stat='identity', fill='blue', colour='black') + 
+  ggtitle('Percent of Incorrectly Classified Instances by PhoneID')
+```
+```{r}
+phone_wap <- filter(rf_mis, PHONEID==17)
+
+
+```
+
+```{r}
+hist(phone_wap$WAP_num)
+table(phone_wap$WAP_num)
+```
+```{r}
+s3d <- scatterplot3d(phone_wap$LONGITUDE, phone_wap$LATITUDE, phone_wap$FLOOR,
+                     type='p',
+                     highlight.3d = FALSE,
+                     color='blue',
+                     angle=130,
+                     pch=5,
+                     box=FALSE,
+                     zlim=c(1,5),
+                     main = 'Correctly and Incorrectly Classified Locations in Building 2 Test Set',
+                     sub='Random Forest Model',
+                     xlab='Longitude', ylab='Latitude',zlab = 'Building 2 Floor',
+                     cex.lab = 1.5,
+                     cex.main=1.5,
+                     cex.sub=1.5,
+                     col.sub='blue')
+```
+
+```{r}
+wifi_trainData_Tsf <- filter(wifi_trainData, PHONEID != 17)
 ```
 
