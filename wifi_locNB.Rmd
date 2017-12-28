@@ -165,7 +165,7 @@ wifi_trainData[is.na(wifi_trainData)] <- -110
 ##4. Explore the Data
 Now that we've cleaned up the data set we'll prepare some visualizations to help us understand the data.  The image below is a satellite picture of the 3-building complex where the Wi-Fi fingerprint data was obtained.  The get_map() and ggmap() functions were used to import and plot the image.
 
-```{r message=FALSE}
+```{r message=FALSE, cache=TRUE}
 #-Satellite image of buildings where data set produced
 locus=c(Lat =  -0.067232, Lon = 39.992631)
 
@@ -183,7 +183,7 @@ ggmap(myMap, extent='panel')
 
 We can use the latitude and longitude data in the data set to plot the location reference points of each building by floor.  The builings (0, 1, and 2) are aligned left to right as they are shown in the satellite image.  
 
-```{r}
+```{r cache=TRUE}
 #3D plot of data- all buildings & floors
 
 scatterplot3d(wifi_trainData$LONGITUDE, wifi_trainData$LATITUDE, wifi_trainData$FLOOR,
@@ -203,7 +203,7 @@ scatterplot3d(wifi_trainData$LONGITUDE, wifi_trainData$LATITUDE, wifi_trainData$
 ```
 
 To get a sense for how many examples or instances there are for each of our classification classes, we can use the table() function on the ID variable.  Since there are 731 different locations, it's difficult to interpret the output so we'll plot the distribution as a histogram.
-```{r}
+```{r cache=TRUE}
 #-Barplot of instance counts across location IDs
 ID_freq <- as.data.frame(table(wifi_trainData$ID))
 
@@ -220,7 +220,7 @@ We can also visualize how the number of WAPs detected varies across the 3 buildi
 
 
 
-```{r}
+```{r cache=TRUE}
 #-Distribution of WAP count by building- boxplot
 ggplot(wifi_trainData, aes(x=BUILDINGID, y=WAP_num)) + geom_boxplot(fill='lightblue') +
   theme(text = element_text(size=14)) +
@@ -231,7 +231,7 @@ ggplot(wifi_trainData, aes(x=BUILDINGID, y=WAP_num)) + geom_boxplot(fill='lightb
 We can also look at the distribution of WAPs detected by building and floor.  The resulting histogram shows some slight differences between buildings.  For one, building 2 is the only one with a 5th floor and it also has spikes in WAPs detected at 17 and 28.  The distribution of WAPs detected in building 1 is more spread out than the other buildings with more occcurences of WAPs detected at the low end.  We can look back after running our predictive models to see if their is any relationship between the number of WAPs detected and accuracy.
 
 
-```{r}
+```{r cache=TRUE}
 #Distribution of WAP count by building and floor
 ggplot(wifi_trainData, aes(x=WAP_num, fill=FLOOR)) + geom_bar() +
   facet_grid(BUILDINGID~.) +
@@ -305,7 +305,7 @@ knn_fit$results
 
 ```
 ### **5.2 Decision Tree**{.tabset}
-Next we will try a tree-based classifier and save the model withe the saveRDS() function.
+Next we will try a tree-based classifier and save the model with the saveRDS() function.
 
 
 ####**Fit Decision Tree Model**
@@ -361,7 +361,7 @@ rf_fit$results
 ###**5.4  Summary of Results**
 We can compare the results of our predictive models by using the resamples() function and then creating a plot. 
 
-```{r}
+```{r cache=TRUE}
 results <- resamples(list(kNN=knn_fit,
                           RF=rf_fit, 
                           C5.0=dtree_fit))
@@ -376,11 +376,17 @@ We can see that the Random Forest model outperformed the decision tree (C5.0) an
 ###**6.1 Instances per Location**
 Using the Random Forest model, we can try to understand what is driving the incorrect classification of locations.  
 
-```{r}
+```{r echo=FALSE}
 #Select instances that were correctly and incorrectly classifed in rf model
 rf_hit <- wifi_trainData[which(rf_fit$finalModel$predictions==wifi_train$ID),]  #-correctly classified
 
+rf_hit$ID <- factor(rf_hit$ID)
+nlevels(rf_hit$ID) #726 levels
+
 rf_mis <- wifi_trainData[which(rf_fit$finalModel$predictions != wifi_train$ID),]  #-incorrectly classified
+
+rf_mis$ID <- factor(rf_mis$ID)
+nlevels(rf_mis$ID)  #598 levels
 
 ```
 We can look at the distribution of instances for correctly and incorrectly classified instances.
@@ -393,10 +399,10 @@ ID_misFreq <- as.data.frame(table(rf_mis$ID))
 ```
 
 
-```{r}
+```{r cache=TRUE}
 #-Plot distribution of Instances 
-ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) + geom_histogram() +
-  geom_histogram(data=ID_misFreq, aes(x=Freq, fill='Incorrect'), alpha=0.4)+
+ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) + geom_histogram(binwidth = 2) +
+  geom_histogram(data=ID_misFreq, aes(x=Freq, fill='Incorrect'), alpha=0.4, binwidth=2)+
   scale_fill_manual(values=c('Correct'='green', 'Incorrect'='blue')) +
   labs(fill='Prediction') +
   theme(panel.border=element_rect(colour='black', fill=NA)) +
@@ -411,6 +417,7 @@ We can also look to see if particular phones used to build the data set were any
 
 ```{r}
 #-Make data frame of counts for correctly classified by phoneID
+
 phone_hit <- tidy(table(rf_hit$PHONEID))
 names(phone_hit) <- c('PhoneID', 'Count_hit') 
 
@@ -426,7 +433,7 @@ y <- mutate(x, Percent_miss = round(Count_miss/(Count_miss + Count_hit)*100,3))
 ```
 
 Plotting the percent misclassified by phone ID shows that phone ID 17 was a particularly poor performer.  In fact, that phone resulted in almost 75% misclassified locations.
-```{r}
+```{r cache=TRUE}
 ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
   geom_bar(stat='identity', fill='blue', colour='black') + 
   ggtitle('Percent of Incorrectly Classified Instances by PhoneID')+
@@ -448,32 +455,34 @@ knitr::kable(phoneID_table) %>%
                 font_size = 14) %>% 
   row_spec(18, bold=T, background = 'yellow')
 ```
+We showed earlier that the number of instances per location was positively correlated with classification accuracy.  To see if that is what is driving the poor accuracy with 
+
 ```{r}
 phone_mis17 <- filter(rf_mis, PHONEID==17)
+phone_mis17$ID <- factor(phone_mis17$ID)  #remove empty factor levels
 
 ```
 ```{r}
 phone_misFreq <- as.data.frame(table(phone_mis17$ID))
 ```
 ```{r}
-ggplot(phone_misFreq, aes(x=Freq)) + geom_histogram(fill='blue')
+ggplot(phone_misFreq, aes(x=Freq)) + geom_histogram(binwidth=2,fill='blue') +
+  xlab('Number of Instances per Location') +
+  ggtitle('Number of Instances at Misclassified Locations with PhoneID 17')+
+  theme(panel.border=element_rect(colour='black', fill=NA))
 ```
+The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitamite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
 
 
-```{r}
-phone_wap <- filter(rf_mis, PHONEID==17)
-
-
-```
 
 ```{r}
 #-Histogram and WAP counts of misclassified locations by phoneID 17
-hist(phone_wap$WAP_num)
-table(phone_wap$WAP_num)
+hist(phone_mis17$WAP_num)
+table(phone_mis17$WAP_num)
 ```
 ```{r}
-s3d <- scatterplot3d(phone_wap$LONGITUDE, phone_wap$LATITUDE, phone_wap$FLOOR,
+s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FLOOR,
                      type='p',
                      highlight.3d = FALSE,
                      color='blue',
@@ -489,9 +498,10 @@ s3d <- scatterplot3d(phone_wap$LONGITUDE, phone_wap$LATITUDE, phone_wap$FLOOR,
                      cex.sub=1.5,
                      col.sub='blue')
 ```
-
+##**7 Train Final Predictive Model**
 ```{r}
 wifi_trainData_Tsf <- filter(wifi_trainData, PHONEID != 17)
+wifi_trainData_Tsf$ID <- factor(wifi_trainData_Tsf$ID)  #-remove empty factor levels
 ```
 
 ```{r eval=TRUE}
