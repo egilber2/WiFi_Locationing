@@ -234,6 +234,8 @@ UNIX Time when the capture was taken. Integer value.
 </tr>
 </tbody>
 </table>
+
+
 **3. Process the Data**
 -----------------------
 
