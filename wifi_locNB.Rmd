@@ -1,14 +1,15 @@
 ---
-title: "Wi-Fi Positioning"
+title: "Wi-Fi Locationing"
 output: 
+  github_document:
+    toc: yes
+    toc_depth: 4
   html_notebook:
-    highlight: pygments
+    highlight: tango
     theme: cerulean
     toc: yes
     toc_float: yes
     toc_depth: 4
-  html_document:
-    keep_md: true
 ---
 
 
@@ -16,17 +17,17 @@ output:
 knitr::opts_chunk$set(echo = TRUE, tidy=TRUE)
 options(knitr.table.format='html')
 ```
-##Introduction
+##**Introduction**
 Unlike outdoor positioning which uses GPS satellites, indoor locationing with a cell phone is a challenge due to poor or no acccess to satellite signals.  An active area of research to address this problem revolves around the use of signals from Wireless Access Points (WAP's) in a building.  The approach covered in this project known as fingerprinting uses a training set of particular positions in a building and the corresponding signal strength from any and all WAP's in the vicinity.  In this way, a 'fingerprint' of WAP signal strength is produced for each position in a building.  One challenge to this approach is that the received signal strength can vary based on the phone brand and model, and the position of the phone (i.e. the height of phone owner).
 
 This project will investigate classification models to predict the location (building, floor, and location ID) on the multi-building of Jaume I University.  The data set is publicly available at the [UCI  Machine Learning repository](http://archive.ics.uci.edu/ml/datasets/UJIIndoorLoc).
 
 Due to the size of the data set, models were fit to the data using Amazon Web Services' (AWS) Elastic Compute Cloud (EC2). 
 
-##1. Frame the Problem
+##**1. Frame the Problem**
 The data set contains over 933 reference points or distinct positions within the buildings.  In addition to the received signal strength of the 520 possible WAP's, a fingerprint for a location contains the building, floor, SpaceID, relative position to the SpaceID, and the latitude/longitude coordinates.  The SpaceID is essentially a room within a building while the relative position to the SpaceID is a location either inside the room or at the entrance in the hallway.  It was initially decided to use only the the positions outside of a spaces as part of a location ID. To frame this as a classification problem, a unique location ID needs to be created for each reference point.  
 
-##2. Collect the Data 
+##**2. Collect the Data** 
 First we'll load the packages that will be used in this analysis.
 
 ```{r  message=FALSE, warning=FALSE}
@@ -49,12 +50,13 @@ library(e1071)      #Random forest
 library(broom)
 library(kableExtra)
 library(ggmap)
+library(knitr)
 ```
 ###2.1 Load Data Set
 The data is loaded into our working environment using the read_csv() function from the readr package.  This results in the data being stored as a tibble which is a data frame with some performance enhancements.
 
-```{r  eval=FALSE, message=FALSE, results='hide', warning=FALSE}
-#-- Training Data
+```{r  eval=TRUE, message=FALSE, results='hide', warning=FALSE}
+#-Training Data
 wifi_data <- read_csv('trainingData.csv', na='100')
 dim(wifi_data)
 ```
@@ -65,35 +67,37 @@ The dim() function tells us the dimensions of the data set which has 19937 insta
 We'll use the glimpse() funtion to get a quick look at the data.  The output is a transposed version of the data with the columns shown as rows so it's possible to see all of the features if needed.  In this case, we know the first 520 columns are the individual wireless access points (WAP's) so the data has been sliced to just show the last 20 features of the data set.
 
 ```{r}
-#-View data set
+
+#-View last 20 features of data set
 glimpse(wifi_data[,510:529])
+
 ```
 We can see that all of the reference point location information is found in the last 9 features.  We can also see that there are several things that need to be addressed when we process the data.  For instance, the second column above shows the data type for each feature.  Several of them are strings (<chr>) when they should be numeric.  There are going to be many missing values for the WAP readings which makes sense as only a small subset of the WAPs will be detected for each location.  However, we'll need a strategy for how to deal with these missing values prior to building our predictive models.
 
-####**Attribute Defitions**
 ```{r message=FALSE}
-#-Prepare table of variable definitions
-
+#-Read in CSV file of Attribute Definitions
 wifi_defTable <- read.csv('Wifi_Attribute_Definitions.csv')
-
-knitr::kable(wifi_defTable) %>% 
-  kable_styling(bootstrap_options = c('striped', 'hover', 'responsive', 'bordered'), 
+  
+#-Generate table of variable definitions
+kable(wifi_defTable, caption = 'Attribute Definitions') %>%   kable_styling(bootstrap_options = c('striped', 'hover', 'responsive', 'bordered'), 
                 full_width = F, 
                 font_size = 14)
 ```
 
-##3. Process the Data
+##**3. Process the Data**
 The first thing we'll do is convert all of our features to numeric data types.  This results in a matrix which we'll then convert back into a tibble.
 
 ```{r}
 #-convert features to numeric
-wifi_trainData <- sapply(wifi_data, as.numeric)
+wifi_trainData <- sapply(wifi_data, as.numeric)  #-output is a matrix
+  
+#-Convert matrix to tibble
 wifi_trainData <- as_tibble(wifi_trainData)
 ```
 
 The floor numbers are in the range of 0-4 in the data set so we'll recode them so floor 1 is the ground floor rather than 0.
 ```{r}
-#recode floor factor level names
+#-Recode floor factor level names
 wifi_trainData$FLOOR <- recode(wifi_trainData$FLOOR, '0'=1, '1'=2, '2'=3, '3'=4, '4'=5)
 
 ```
@@ -101,7 +105,7 @@ wifi_trainData$FLOOR <- recode(wifi_trainData$FLOOR, '0'=1, '1'=2, '2'=3, '3'=4,
 Next, we'll convert several of the variables to categorical or qualitative using the factor() function.
 
 ```{r}
-#convert categoricals to factor
+#-Convert features to categorical 
 wifi_trainData$BUILDINGID <- factor(wifi_trainData$BUILDINGID)
 wifi_trainData$SPACEID <- factor(wifi_trainData$SPACEID)
 wifi_trainData$RELATIVEPOSITION <- factor(wifi_trainData$RELATIVEPOSITION)
@@ -111,7 +115,7 @@ wifi_trainData$FLOOR <- factor(wifi_trainData$FLOOR)
 It's likely that the number of WAPs detected by a phone at a location would be positively correlated with location classification accuracy.  To be able to explore that idea, a column is added that contains the sum of WAPs detected.   
 
 ```{r}
-#-Add count of WAP's detected
+#-Add count of WAP's detected as feature
 wifi_trainData$WAP_num <- apply(wifi_trainData[,1:520], 1,
                                 function(x) length(which(!is.na(x))))
 ```
@@ -120,17 +124,18 @@ Next, we'll filter the data set such that it only contains locations outside of 
 
 ```{r}
 #-Filter on hallway positions
-wifi_trainData <- filter(wifi_trainData, wifi_trainData$RELATIVEPOSITION==2)
+wifi_trainData <- filter(wifi_trainData, 
+                         wifi_trainData$RELATIVEPOSITION==2)
 ```
 
 To define a unique location ID for each location entrance in the 3 buildings, we'll use the group_indices() function of dplyr.  This will be our dependent variable for our classification models so we need to convert it to a categorical variable using the factor() function.
 
 ```{r}
-#-Consolidate position identifiers
-wifi_trainData$ID <- wifi_trainData %>% 
+#-Consolidate position identifiers to create location ID feature
+wifi_trainData$ID <- wifi_trainData %>%
   group_indices(BUILDINGID, FLOOR, SPACEID)
 
-#convert ID variable to factor
+#-Convert ID variable to categorical
 wifi_trainData$ID <- factor(wifi_trainData$ID)
 ```
 To determine how many different classess we have for classification, we can use the nlevels() function on the ID variable.
@@ -145,7 +150,7 @@ Next we'll remove any variables that contain only NA values.
 #-Remove columns with all NA values
 wifi_trainData <- wifi_trainData[,colSums(is.na(wifi_trainData[1:16608,]))<nrow(wifi_trainData[1:16608,])]
 
-#glimpse(wifi_trainData)  #removes 76 columns
+#-Removes 76 columns
 
 ```
 This results in the removal of 76 columns.  We'll do the same for rows that contain no signal received from any of the 520 WAPs.
@@ -153,7 +158,7 @@ This results in the removal of 76 columns.  We'll do the same for rows that cont
 ```{r}
 #-Remove rows with all NA values
 wifi_trainData <- wifi_trainData[rowSums(is.na(wifi_trainData[,1:444])) != ncol(wifi_trainData[,1:444]),]
-#removes 858 rows
+#removes 55 rows
 ```
 
 Finally, we will address the many missing values in the data set which are currently a placeholder for the absence of a signal from a WAP. The values for the signal range from -104 to 0 dBm with 0 being the strongest signal and -104 being the weakest.  The original data set used the value of +100 to code for the absence of signal.  However, we'll use a  value of -110 dBm to represent no signal from a WAP as it corresponds to a signal that is weaker than any WAP signal in the data set.
@@ -163,13 +168,14 @@ Finally, we will address the many missing values in the data set which are curre
 wifi_trainData[is.na(wifi_trainData)] <- -110
 ```
 
-##4. Explore the Data
+##**4. Explore the Data**
 Now that we've cleaned up the data set we'll prepare some visualizations to help us understand the data.  The image below is a satellite picture of the 3-building complex where the Wi-Fi fingerprint data was obtained.  The get_map() and ggmap() functions were used to import and plot the image.
 
-```{r message=FALSE, cache=TRUE}
-#-Satellite image of buildings where data set produced
+```{r message=FALSE, cache=TRUE, cache.lazy=FALSE}
+#-Define latitude and longitude coordinates for image location
 locus=c(Lat =  -0.067232, Lon = 39.992631)
-
+  
+#-Create satellite image
 myMap <- get_map(location=locus,
                  zoom=18,
                  source="google", 
@@ -177,15 +183,16 @@ myMap <- get_map(location=locus,
                  scale='auto',
                  crop=TRUE,
                  color='color')
-
+  
+#-Plot satellite image of buildings in data set
 ggmap(myMap, extent='panel')
 
 ```
 
 We can use the latitude and longitude data in the data set to plot the location reference points of each building by floor.  The builings (0, 1, and 2) are aligned left to right as they are shown in the satellite image.  
 
-```{r cache=TRUE}
-#3D plot of data- all buildings & floors
+```{r cache=TRUE, cache.lazy=FALSE}
+#3D image of reference point locations in data set
 
 scatterplot3d(wifi_trainData$LONGITUDE, wifi_trainData$LATITUDE, wifi_trainData$FLOOR,
               type='p',
@@ -204,15 +211,19 @@ scatterplot3d(wifi_trainData$LONGITUDE, wifi_trainData$LATITUDE, wifi_trainData$
 ```
 
 To get a sense for how many examples or instances there are for each of our classification classes, we can use the table() function on the ID variable.  Since there are 731 different locations, it's difficult to interpret the output so we'll plot the distribution as a histogram.
-```{r cache=TRUE}
-#-Barplot of instance counts across location IDs
-ID_freq <- as.data.frame(table(wifi_trainData$ID))
 
+```{r cache=TRUE, cache.lazy=FALSE}
+#-Create data frame of instance counts per location 
+ID_freq <- as.data.frame(table(wifi_trainData$ID))
+  
+#-Plot histogram of instance counts at locations
 ggplot(ID_freq, aes(x = Freq)) +
   geom_histogram(fill='green', binwidth = 2, color='black')+
   scale_x_continuous(breaks=seq(0,100,10)) +
   ggtitle('Frequency Count of Location ID Instances') +
   xlab('Number of Instances for a Loacation ID') +
+  ylab('Frequency of Observed Instance Count') +
+  theme(text = element_text(size=14)) +
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
 The instance count for locations ranges from a minumum of 2 to a maximum of 90 with 20 being the most common number of instances for a location.  
@@ -221,9 +232,10 @@ We can also visualize how the number of WAPs detected varies across the 3 buildi
 
 
 
-```{r cache=TRUE}
+```{r cache=TRUE, cache.lazy=FALSE}
 #-Distribution of WAP count by building- boxplot
-ggplot(wifi_trainData, aes(x=BUILDINGID, y=WAP_num)) + geom_boxplot(fill='lightblue') +
+ggplot(wifi_trainData, aes(x=BUILDINGID, y=WAP_num)) + 
+  geom_boxplot(fill='lightblue') +
   theme(text = element_text(size=14)) +
   ggtitle('Distribution of Detected Wireless Access Points by Building') +
   labs(x="Building Number", y= 'WAP Counts' ) +
@@ -232,7 +244,7 @@ ggplot(wifi_trainData, aes(x=BUILDINGID, y=WAP_num)) + geom_boxplot(fill='lightb
 We can also look at the distribution of WAPs detected by building and floor.  The resulting histogram shows some slight differences between buildings.  For one, building 2 is the only one with a 5th floor and it also has spikes in WAPs detected at 17 and 28.  The distribution of WAPs detected in building 1 is more spread out than the other buildings with more occcurences of WAPs detected at the low end.  We can look back after running our predictive models to see if there is any relationship between the number of WAPs detected and accuracy.
 
 
-```{r cache=TRUE}
+```{r cache=TRUE, cache.lazy=FALSE}
 #Distribution of WAP count by building and floor
 ggplot(wifi_trainData, aes(x=WAP_num, fill=FLOOR)) + geom_bar() +
   facet_grid(BUILDINGID~.) +
@@ -243,24 +255,25 @@ ggplot(wifi_trainData, aes(x=WAP_num, fill=FLOOR)) + geom_bar() +
 ```
 
 
-##5.  Build Predictive Models {.tabset .tabset-pills}
+##**5.  Build Predictive Models** {.tabset .tabset-pills}
 Now that we've cleaned and visualized the data, we can remove attributes that won't be needed in a predictive model.  In the end, all we will need is our dependent variable (ID) and the 520 WAP variables that make up the Wi-Fi fingerprint for the location ID.
 
 ```{r}
 #-Remove unneeded variables prior to model fitting
 wifi_train <- select(wifi_trainData, -RELATIVEPOSITION, -USERID, -WAP_num, -PHONEID, -TIMESTAMP, -LONGITUDE, -LATITUDE, -BUILDINGID, -SPACEID, -FLOOR)
 ```
-Using the trainControl() function, we can set many paramaters used in the model fitting step by the train() function.  The *method* argument sets the resampling technique which in this case is repeated cross validation (CV) or repeatedcv.  The *number* argument sets the number of folds in the k-fold-CV which will then be repeated 3 times.  The final parameter lets us take advantage of R's parallel processing.
+Using the trainControl() function, we can set many paramaters used in the model fitting step by the train() function.  The *method* argument sets the resampling technique which in this case is repeated cross validation (CV) or repeatedcv.  The *number* argument sets the number of folds in the k-fold-CV which will then be repeated 3 times.  The final parameter allows us to reproducibly set the seed for work going on during parallel processing.
 
 ```{r}
-#-Set parameters in trainControl used in model fitting.
+#-Assign values in seeds agrument of trainControl
 set.seed(123)
 seeds <- vector(mode = 'list', length=31)
 for(i in 1:30) seeds[[i]] <- sample.int(1000, 518)
-
+  
 #for last model:
 seeds[[31]] <- sample.int(1000,1)
-
+  
+#-Define parameters in trainControl
 fitControl <- trainControl(method = "repeatedcv", 
                            number = 10,
                            repeats=3,
@@ -275,23 +288,23 @@ We'll use a grid search to look at values of k ranging from 1 to 5.  After train
 
 ####**Fit kNN Model**
 ```{r eval=FALSE}
-#-Train k-NN model
 
-registerDoMC(cores=16)  #for AWS EC2 use
-#cluster <- makeCluster(detectCores())
-#registerDoParallel(cluster)
-
+#-Fit kNN model
+#registerDoMC(cores=16)   #-for parallel processing as AWS EC2 instance
 set.seed(7811)
-
+  
+#-Grid of k values to search 
 knn_grid <- expand.grid(.k=c(1:5))
-
+  
+#-Train kNN model
 knn_fit <- train(ID~., data=wifi_train, 
                         method='knn',
                         preProcess = c('zv'),
                         tuneGrid=knn_grid,
                         trControl = fitControl)
-
-knn_fit <- saveRDS(knn_fit, 'knn_fit.rds')     #-save model
+  
+#-Save model
+knn_fit <- saveRDS(knn_fit, 'knn_fit.rds') 
 ```
 
 ####**Assess k-NN Model**
@@ -299,62 +312,79 @@ The plot below shows the cross validated accuracy as it relates to the number of
 
 ```{r}
 #-Read in model and view results
-
 knn_fit <- readRDS('knn_fit.rds')
+```
+
+```{r cache=TRUE, cache.lazy=FALSE}
 plot(knn_fit)
 knn_fit$results
 
 ```
+
 ### **5.2 Decision Tree**{.tabset}
 Next we will try a tree-based classifier and save the model with the saveRDS() function.
 
 
 ####**Fit Decision Tree Model**
-```{r eval=FALSE}
+```{r eval = FALSE}
+
 #-Train decision tree (C5.0) model
 
-registerDoMC(cores=16)
-
+#registerDoMC(cores=16)  #-for parallel processing as AWS EC2 instance
 set.seed(7811)
+  
+#-Train decision tree model
 dtree_fit <- train(ID~., wifi_train,
                           method='C5.0',
                           preProcess = c('zv'),
                           trControl = fitControl)
-
-dtree_fit <- saveRDS(dtree_fit, 'dtree_fit.rds')     #-save model
+  
+#-Save model
+dtree_fit <- saveRDS(dtree_fit, 'dtree_fit.rds')     
 ```
 ####**Assess Decision Tree Model**
 We can see from the graphical output that there may still be room for improvement as the CV accuracy is still trending upwards.  We could use a grid search to explore larger number of trials or boosting iterations.
+
 ```{r}
 #-Read in decision tree model and view results.
 dtree_fit <- readRDS('dtree_fit.rds')
+```
+
+```{r cache=TRUE, cache.lazy=FALSE}
 plot(dtree_fit)
 dtree_fit$results
 ```
 
 ### **5.3 Random Forest**{.tabset}
-Finally, we'll take a look at a random forest classifier.
+Finally, we'll take a look at a Random Forest classifier.
 
 ####**Fit RF Model**
 We'll use the ranger package to train a Random Forest model which is a good choice for high dimensional data.  
 
 ```{r eval=FALSE}
-registerDoMC(cores=16)
-
+#-Train Random Forest model
+  
+registerDoMC(cores=16)  #-for parallel processing as AWS EC2 instance
 set.seed(7811)
-
+  
+#-Train Random Forest model
 rf_fit <- train(ID~., wifi_train,
                        method='ranger', 
                        preProcess = c('zv'),
                        trControl = fitControl)
-
-rf_fit <- saveRDS(rf_fit, 'rf_fit.rds')     #-save model
+  
+#-Save model
+rf_fit <- saveRDS(rf_fit, 'rf_fit.rds')     
 ```
 ####**Assess RF Model**
 The Random Forest model reached a cross validated accuracy of 86%.
 
 ```{r}
+#-Read in Random Forest model and view results
 rf_fit <- readRDS('rf_fit.rds')
+```
+
+```{r cache=TRUE, cache.lazy=FALSE}
 plot(rf_fit)
 rf_fit$results
 ```
@@ -362,7 +392,8 @@ rf_fit$results
 ###**5.4  Summary of Results**
 We can compare the results of our predictive models by using the resamples() function and then creating a plot. 
 
-```{r cache=TRUE}
+```{r cache=TRUE, cache.lazy=FALSE}
+#-Summarize results of predictive models
 results <- resamples(list(kNN=knn_fit,
                           RF=rf_fit, 
                           C5.0=dtree_fit))
@@ -377,32 +408,34 @@ We can see that the Random Forest model outperformed the decision tree (C5.0) an
 Using the Random Forest model, we can try to understand what is driving the incorrect classification of locations.  
 
 ```{r results='hide'}
-#Select instances that were correctly and incorrectly classifed in rf model
-rf_hit <- wifi_trainData[which(rf_fit$finalModel$predictions==wifi_train$ID),]  #-correctly classified
-
-rf_hit$ID <- factor(rf_hit$ID)
+#-Select instances that were correctly classifed in rf model
+rf_hit <- wifi_trainData[which(rf_fit$finalModel$predictions==wifi_train$ID),]  
+  
+rf_hit$ID <- factor(rf_hit$ID)  #-Remove empty factor levels
 nlevels(rf_hit$ID) #726 levels
-
-rf_mis <- wifi_trainData[which(rf_fit$finalModel$predictions != wifi_train$ID),]  #-incorrectly classified
-
-rf_mis$ID <- factor(rf_mis$ID)
+  
+#-Select instances that were incorrectly classifed in rf model
+rf_mis <- wifi_trainData[which(rf_fit$finalModel$predictions != wifi_train$ID),] 
+  
+rf_mis$ID <- factor(rf_mis$ID)  #-Remove empty factor levels
 nlevels(rf_mis$ID)  #598 levels
 
 ```
 We can look at the distribution of instance counts for correctly and incorrectly classified instances.  First we'll make data frames of instance counts for correctly and incorrectly classified locations.
 
 ```{r}
-
-#-get counts of instances correctly and incorrectly classified
+#-Create data frames of instance counts at locations for correctly and incorrectly classified
 ID_hitFreq <- as.data.frame(table(rf_hit$ID))
 ID_misFreq <- as.data.frame(table(rf_mis$ID))
 ```
 We can then overlay the distributions in the same plot.
 
-```{r cache=TRUE}
+```{r cache=TRUE, cache.lazy=FALSE}
 #-Plot distribution of Instance Counts for Locations
-ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) + geom_histogram(binwidth = 2) +
-  geom_histogram(data=ID_misFreq, aes(x=Freq, fill='Incorrect'), alpha=0.4, binwidth=2)+
+ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) +
+  geom_histogram(binwidth = 2) +
+  geom_histogram(data=ID_misFreq, aes(x=Freq, fill='Incorrect'),
+                 alpha=0.4, binwidth=2) +
   scale_fill_manual(values=c('Correct'='green', 'Incorrect'='blue')) +
   labs(fill='Prediction') +
   theme(panel.border=element_rect(colour='black', fill=NA)) +
@@ -413,7 +446,7 @@ ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) + geom_histogram(binwidth = 2) +
 Clearly, locations with more instances in the data set were more likely to be correctly classified.  We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
 
 ```{r}
-
+#-T-Test on means of instance counts for locations correctly/incorrectly classified
 t.test(ID_hitFreq$Freq, ID_misFreq$Freq,
        alternative='two.sided',conf.level = 0.95)
 ```
@@ -422,7 +455,8 @@ Based on the result of the t-test, we can say with >95% confidence that the diff
 ###**6.2 WAPs Detected**
 To see if the WAPs detected is different for correctly and incorrectly classified locations, we'll plot the distribution of WAPs detected for each of those cases.
 
-```{r}
+```{r, cache=TRUE, cache.lazy=FALSE}
+#-Plot distribution of WAP counts for correctly/incorrectly classified
 ggplot(rf_hit, aes(WAP_num, fill='Correct')) + 
   geom_histogram(binwidth = 2) +
   geom_histogram(data=rf_mis, aes(WAP_num, fill='Incorrect'),
@@ -441,23 +475,28 @@ We can also look to see if particular phones used to build the data set were any
 
 ```{r}
 #-Make data frame of counts for correctly classified by phoneID
-
 phone_hit <- tidy(table(rf_hit$PHONEID))
+#-Assign new column names
 names(phone_hit) <- c('PhoneID', 'Count_hit') 
+  
 
 #-Make data frame of counts for incorrectly classified by phoneID
 phone_mis <- tidy(table(rf_mis$PHONEID))
+#-Assign new column names
 names(phone_mis) <- c('PhoneID', 'Count_miss')
-
+  
 #-Merge data frames
 x <- merge(x=phone_hit, y=phone_mis, by = 'PhoneID')
-
+  
 #-Add column for percent missed by phoneID
 y <- mutate(x, Percent_miss = round(Count_miss/(Count_miss + Count_hit)*100,3))
 ```
 
 Plotting the percent misclassified by phone ID shows that phone ID 17 was a particularly poor performer.  In fact, that phone resulted in almost 75% misclassified locations.
-```{r cache=TRUE}
+
+```{r cache=TRUE, cache.lazy=FALSE}
+
+#-Plot percent miscalssified by phone ID
 ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
   geom_bar(stat='identity', fill='blue', colour='black') + 
   ggtitle('Percent of Incorrectly Classified Instances by PhoneID')+
@@ -470,34 +509,41 @@ Looking at the descriptions for the phones used in the preparation of the data s
 
 ```{r}
 #-Prepare table of phoneID
-
 phoneID_table <- read.csv('PhoneID_model_descrip.csv')
-
-knitr::kable(phoneID_table) %>% 
+  
+#-Generate table of phoneID and model
+kable(phoneID_table) %>% 
   kable_styling(bootstrap_options = c('striped', 'hover', 'responsive', 'bordered'), 
                 full_width = F, 
                 font_size = 14) %>% 
   row_spec(18, bold=T, background = 'yellow')
 ```
-We showed earlier that the number of instances per location was positively correlated with classification accuracy.  To see if that is what is driving the poor accuracy with 
+We showed earlier that the number of instances per location was positively correlated with classification accuracy.  To see if that is what is driving the poor accuracy with this particular phone, we can look at the distribution of instances for misclassified examples.
 
 ```{r}
+#-Select only misclassified examples with phoneID=17 
 phone_mis17 <- filter(rf_mis, PHONEID==17)
 phone_mis17$ID <- factor(phone_mis17$ID)  #remove empty factor levels
 
 ```
+
 ```{r}
+#-Create data frame of instance counts for locations misclassified by phoneID=17
+
 phone_misFreq <- as.data.frame(table(phone_mis17$ID))
 ```
-```{r}
+
+```{r cache=TRUE, cache.lazy=FALSE}
+#-Plot instance counts for misclassified locations by phoneID 17
+
 ggplot(phone_misFreq, aes(x=Freq)) + geom_histogram(binwidth=2,fill='blue') +
   xlab('Number of Instances per Location') +
   ggtitle('Number of Instances at Misclassified Locations with PhoneID 17')+
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
-The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitamite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
+The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitemite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
-```{r}
+```{r cache=TRUE, cache.lazy=FALSE}
 s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FLOOR,
                      type='p',
                      highlight.3d = FALSE,
@@ -516,21 +562,34 @@ s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FL
 ```
 ##**7 Train Final Predictive Model**
 ```{r}
+#-Remove data for phoneID 17 from data set
 wifi_trainData_Tsf <- filter(wifi_trainData, PHONEID != 17)
 wifi_trainData_Tsf$ID <- factor(wifi_trainData_Tsf$ID)  #-remove empty factor levels
 ```
 
-```{r eval=TRUE}
+```{r eval=FALSE}
+#-Train Random Forest model 
 
-registerDoMC(cores=16)
+#registerDoMC(cores=16)  #-for parallel processing AWS EC2 instance
 
 set.seed(7811)
 
-rf_fit2 <- train(ID~., wifi_train,
+rf_fit2 <- train(ID~., wifi_trainData_Tsf,
                        method='ranger', 
                        preProcess = c('zv'),
                        trControl = fitControl)
-
+  
+#-Save model
 rf_fit2 <- saveRDS(rf_fit2, 'rf_fit2.rds')
+```
+
+```{r}
+#-Read in Random Forest model and view results
+rf_fit2 <- readRDS('rf_fit2.rds')
+```
+
+```{r cache=TRUE, cache.lazy=FALSE}
+plot(rf_fit2)
+rf_fit2$results
 ```
 
