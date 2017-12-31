@@ -23,6 +23,7 @@ Wi-Fi Locationing
     -   [**6.1 Instances per Location**](#instances-per-location)
     -   [**6.2 WAPs Detected**](#waps-detected)
     -   [**6.3 Phone ID**](#phone-id)
+-   [**7 Train Final Predictive Model**](#train-final-predictive-model)
 
 **Introduction**
 ----------------
@@ -1143,7 +1144,10 @@ s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FL
     cex.lab = 1.5, cex.main = 1.5, cex.sub = 1.5, col.sub = "blue")
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-43-1.png) \#\#**7 Train Final Predictive Model**
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-43-1.png)
+
+**7 Train Final Predictive Model**
+----------------------------------
 
 ``` r
 #-Remove data for phoneID 17 from data set
