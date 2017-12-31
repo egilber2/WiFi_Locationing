@@ -4,8 +4,8 @@ Wi-Fi Locationing
 -   [**Introduction**](#introduction)
 -   [**1. Frame the Problem**](#frame-the-problem)
 -   [**2. Collect the Data**](#collect-the-data)
-    -   [2.1 Load Data Set](#load-data-set)
-    -   [2.2 Inspect Data](#inspect-data)
+    -   [**2.1 Load Data Set**](#load-data-set)
+    -   [**2.2 Inspect Data**](#inspect-data)
 -   [**3. Process the Data**](#process-the-data)
 -   [**4. Explore the Data**](#explore-the-data)
 -   [**5. Build Predictive Models**](#build-predictive-models)
@@ -67,7 +67,7 @@ library(ggmap)
 library(knitr)
 ```
 
-### 2.1 Load Data Set
+### **2.1 Load Data Set**
 
 The data is loaded into our working environment using the read\_csv() function from the readr package. This results in the data being stored as a tibble which is a data frame with some performance enhancements.
 
@@ -79,7 +79,7 @@ dim(wifi_data)
 
 The dim() function tells us the dimensions of the data set which has 19937 instances or rows and 529 features or columns.
 
-### 2.2 Inspect Data
+### **2.2 Inspect Data**
 
 We'll use the glimpse() funtion to get a quick look at the data. The output is a transposed version of the data with the columns shown as rows so it's possible to see all of the features if needed. In this case, we know the first 520 columns are the individual wireless access points (WAP's) so the data has been sliced to just show the last 20 features of the data set.
 
