@@ -6,7 +6,7 @@ Wi-Fi Locationing
 -   [**2. Collect the Data**](#collect-the-data)
     -   [**2.1 Load Data Set**](#load-data-set)
     -   [**2.2 Inspect Data**](#inspect-data)
--   [**3. Process the Data**](#process-the-data)
+-   [**3 Process the Data**](#process-the-data)
 -   [**4. Explore the Data**](#explore-the-data)
 -   [**5. Build Predictive Models**](#build-predictive-models)
     -   [**5.1 kNN**](#knn)
@@ -234,8 +234,8 @@ UNIX Time when the capture was taken. Integer value.
 </tr>
 </tbody>
 </table>
-**3. Process the Data**
------------------------
+**3 Process the Data**
+----------------------
 
 The first thing we'll do is convert all of our features to numeric data types. This results in a matrix which we'll then convert back into a tibble.
 
