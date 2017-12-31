@@ -84,6 +84,7 @@ kable(wifi_defTable, caption = 'Attribute Definitions') %>%   kable_styling(boot
                 font_size = 14)
 ```
 
+
 ##**3. Process the Data**
 The first thing we'll do is convert all of our features to numeric data types.  This results in a matrix which we'll then convert back into a tibble.
 
@@ -507,7 +508,7 @@ ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
 ```
 Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D.  
 
-```{r}
+```{r cache=TRUE, cache.lazy=FALSE}
 #-Prepare table of phoneID
 phoneID_table <- read.csv('PhoneID_model_descrip.csv')
   
@@ -560,7 +561,9 @@ s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FL
                      cex.sub=1.5,
                      col.sub='blue')
 ```
+
 ##**7 Train Final Predictive Model**
+
 ```{r}
 #-Remove data for phoneID 17 from data set
 wifi_trainData_Tsf <- filter(wifi_trainData, PHONEID != 17)
