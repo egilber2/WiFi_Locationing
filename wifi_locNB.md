@@ -1,14 +1,14 @@
 Wi-Fi Locationing
 ================
 
--   [Introduction](#introduction)
--   [1. Frame the Problem](#frame-the-problem)
--   [2. Collect the Data](#collect-the-data)
+-   [**Introduction**](#introduction)
+-   [**1. Frame the Problem**](#frame-the-problem)
+-   [**2. Collect the Data**](#collect-the-data)
     -   [2.1 Load Data Set](#load-data-set)
     -   [2.2 Inspect Data](#inspect-data)
--   [3. Process the Data](#process-the-data)
--   [4. Explore the Data](#explore-the-data)
--   [5. Build Predictive Models](#build-predictive-models)
+-   [**3. Process the Data**](#process-the-data)
+-   [**4. Explore the Data**](#explore-the-data)
+-   [**5. Build Predictive Models**](#build-predictive-models)
     -   [**5.1 kNN**](#knn)
         -   [**Fit kNN Model**](#fit-knn-model)
         -   [**Assess k-NN Model**](#assess-k-nn-model)
@@ -24,8 +24,8 @@ Wi-Fi Locationing
     -   [**6.2 WAPs Detected**](#waps-detected)
     -   [**6.3 Phone ID**](#phone-id)
 
-Introduction
-------------
+**Introduction**
+----------------
 
 Unlike outdoor positioning which uses GPS satellites, indoor locationing with a cell phone is a challenge due to poor or no acccess to satellite signals. An active area of research to address this problem revolves around the use of signals from Wireless Access Points (WAP's) in a building. The approach covered in this project known as fingerprinting uses a training set of particular positions in a building and the corresponding signal strength from any and all WAP's in the vicinity. In this way, a 'fingerprint' of WAP signal strength is produced for each position in a building. One challenge to this approach is that the received signal strength can vary based on the phone brand and model, and the position of the phone (i.e. the height of phone owner).
 
@@ -33,13 +33,13 @@ This project will investigate classification models to predict the location (bui
 
 Due to the size of the data set, models were fit to the data using Amazon Web Services' (AWS) Elastic Compute Cloud (EC2).
 
-1. Frame the Problem
---------------------
+**1. Frame the Problem**
+------------------------
 
 The data set contains over 933 reference points or distinct positions within the buildings. In addition to the received signal strength of the 520 possible WAP's, a fingerprint for a location contains the building, floor, SpaceID, relative position to the SpaceID, and the latitude/longitude coordinates. The SpaceID is essentially a room within a building while the relative position to the SpaceID is a location either inside the room or at the entrance in the hallway. It was initially decided to use only the the positions outside of a spaces as part of a location ID. To frame this as a classification problem, a unique location ID needs to be created for each reference point.
 
-2. Collect the Data
--------------------
+**2. Collect the Data**
+-----------------------
 
 First we'll load the packages that will be used in this analysis.
 
@@ -233,8 +233,8 @@ UNIX Time when the capture was taken. Integer value.
 </tr>
 </tbody>
 </table>
-3. Process the Data
--------------------
+**3. Process the Data**
+-----------------------
 
 The first thing we'll do is convert all of our features to numeric data types. This results in a matrix which we'll then convert back into a tibble.
 
@@ -324,8 +324,8 @@ Finally, we will address the many missing values in the data set which are curre
 wifi_trainData[is.na(wifi_trainData)] <- -110
 ```
 
-4. Explore the Data
--------------------
+**4. Explore the Data**
+-----------------------
 
 Now that we've cleaned up the data set we'll prepare some visualizations to help us understand the data. The image below is a satellite picture of the 3-building complex where the Wi-Fi fingerprint data was obtained. The get\_map() and ggmap() functions were used to import and plot the image.
 
@@ -395,8 +395,8 @@ ggplot(wifi_trainData, aes(x = WAP_num, fill = FLOOR)) + geom_bar() + facet_grid
 
 ![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-19-1.png)
 
-5. Build Predictive Models
---------------------------
+**5. Build Predictive Models**
+------------------------------
 
 Now that we've cleaned and visualized the data, we can remove attributes that won't be needed in a predictive model. In the end, all we will need is our dependent variable (ID) and the 520 WAP variables that make up the Wi-Fi fingerprint for the location ID.
 
@@ -453,10 +453,13 @@ The plot below shows the cross validated accuracy as it relates to the number of
 ``` r
 #-Read in model and view results
 knn_fit <- readRDS("knn_fit.rds")
+```
+
+``` r
 plot(knn_fit)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-23-1.png)
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-24-1.png)
 
 ``` r
 knn_fit$results
@@ -496,10 +499,13 @@ We can see from the graphical output that there may still be room for improvemen
 ``` r
 #-Read in decision tree model and view results.
 dtree_fit <- readRDS("dtree_fit.rds")
+```
+
+``` r
 plot(dtree_fit)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-25-1.png)
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-27-1.png)
 
 ``` r
 dtree_fit$results
@@ -548,10 +554,13 @@ The Random Forest model reached a cross validated accuracy of 86%.
 ``` r
 #-Read in Random Forest model and view results
 rf_fit <- readRDS("rf_fit.rds")
+```
+
+``` r
 plot(rf_fit)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-27-1.png)
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-30-1.png)
 
 ``` r
 rf_fit$results
@@ -606,7 +615,7 @@ summary(results)
 bwplot(results)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-28-1.png) We can see that the Random Forest model outperformed the decision tree (C5.0) and k-NN models.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-31-1.png) We can see that the Random Forest model outperformed the decision tree (C5.0) and k-NN models.
 
 **6 Explore Location Classification Results**
 ---------------------------------------------
@@ -650,7 +659,7 @@ ggplot(ID_hitFreq, aes(x = Freq, fill = "Correct")) + geom_histogram(binwidth = 
     fill = NA)) + ggtitle("Distribution of Instances per Location") + xlab("Number of Instances per Location")
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-31-1.png) Clearly, locations with more instances in the data set were more likely to be correctly classified. We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-34-1.png) Clearly, locations with more instances in the data set were more likely to be correctly classified. We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
 
 ``` r
 #-T-Test on means of instance counts for locations correctly/incorrectly classified
@@ -684,7 +693,7 @@ ggplot(rf_hit, aes(WAP_num, fill = "Correct")) + geom_histogram(binwidth = 2) +
     fill = NA)) + ggtitle("Distribution of WAPs detected per Location") + xlab("Number of WAPs per Location")
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-33-1.png) It seems that the number of WAPs detected has nothing to do with whether or not a location is correctly or incorrectly predicted by our Random Forest model.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-36-1.png) It seems that the number of WAPs detected has nothing to do with whether or not a location is correctly or incorrectly predicted by our Random Forest model.
 
 ### **6.3 Phone ID**
 
@@ -720,7 +729,7 @@ ggplot(y, aes(x = factor(PhoneID), y = Percent_miss)) + geom_bar(stat = "identit
     fill = NA))
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-35-1.png) Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-38-1.png) Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D.
 
 ``` r
 #-Prepare table of phoneID
@@ -1124,7 +1133,7 @@ ggplot(phone_misFreq, aes(x = Freq)) + geom_histogram(binwidth = 2, fill = "blue
     theme(panel.border = element_rect(colour = "black", fill = NA))
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-39-1.png) The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17. This phone does seem to be a legitemite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-42-1.png) The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17. This phone does seem to be a legitemite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
 ``` r
 s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FLOOR, 
@@ -1134,7 +1143,7 @@ s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FL
     cex.lab = 1.5, cex.main = 1.5, cex.sub = 1.5, col.sub = "blue")
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-40-1.png) \#\#**7 Train Final Predictive Model**
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-43-1.png) \#\#**7 Train Final Predictive Model**
 
 ``` r
 #-Remove data for phoneID 17 from data set
@@ -1159,10 +1168,13 @@ rf_fit2 <- saveRDS(rf_fit2, "rf_fit2.rds")
 ``` r
 #-Read in Random Forest model and view results
 rf_fit2 <- readRDS("rf_fit2.rds")
+```
+
+``` r
 plot(rf_fit2)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-43-1.png)
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-47-1.png)
 
 ``` r
 rf_fit2$results
