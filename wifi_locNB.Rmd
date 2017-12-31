@@ -52,7 +52,8 @@ library(kableExtra)
 library(ggmap)
 library(knitr)
 ```
-###2.1 Load Data Set
+
+###**2.1 Load Data Set**
 The data is loaded into our working environment using the read_csv() function from the readr package.  This results in the data being stored as a tibble which is a data frame with some performance enhancements.
 
 ```{r  eval=TRUE, message=FALSE, results='hide', warning=FALSE}
@@ -63,7 +64,7 @@ dim(wifi_data)
 The dim() function tells us the dimensions of the data set which has 19937 instances or rows and 529 features or columns.  
 
 
-###2.2 Inspect Data
+###**2.2 Inspect Data**
 We'll use the glimpse() funtion to get a quick look at the data.  The output is a transposed version of the data with the columns shown as rows so it's possible to see all of the features if needed.  In this case, we know the first 520 columns are the individual wireless access points (WAP's) so the data has been sliced to just show the last 20 features of the data set.
 
 ```{r}
@@ -74,7 +75,7 @@ glimpse(wifi_data[,510:529])
 ```
 We can see that all of the reference point location information is found in the last 9 features.  We can also see that there are several things that need to be addressed when we process the data.  For instance, the second column above shows the data type for each feature.  Several of them are strings (<chr>) when they should be numeric.  There are going to be many missing values for the WAP readings which makes sense as only a small subset of the WAPs will be detected for each location.  However, we'll need a strategy for how to deal with these missing values prior to building our predictive models.
 
-```{r message=FALSE}
+```{r message=FALSE, cache=TRUE, cache.lazy=FALSE}
 #-Read in CSV file of Attribute Definitions
 wifi_defTable <- read.csv('Wifi_Attribute_Definitions.csv')
   
