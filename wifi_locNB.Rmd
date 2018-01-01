@@ -19,7 +19,7 @@ options(knitr.table.format='html')
 
 ```
 ##**Introduction**
-Unlike outdoor positioning which uses GPS satellites, indoor locationing with a cell phone is a challenge due to poor or no acccess to satellite signals.  An active area of research to address this problem revolves around the use of signals from Wireless Access Points (WAP's) in a building.  The approach covered in this project known as fingerprinting uses a training set of particular positions in a building and the corresponding signal strength from any and all WAP's in the vicinity.  In this way, a 'fingerprint' of WAP signal strength is produced for each position in a building.  One challenge to this approach is that the received signal strength can vary based on the phone brand and model, and the position of the phone (i.e. the height of phone owner).
+Unlike outdoor positioning, which uses GPS satellites, indoor locationing with a cell phone is a challenge due to poor or no acccess to satellite signals.  An active area of research to address this problem revolves around the use of signals from Wireless Access Points (WAP's) in a building.  The approach covered in this project known as fingerprinting uses a training set of particular positions in a building and the corresponding signal strength from any and all WAP's in the vicinity.  In this way, a 'fingerprint' of WAP signal strength is produced for each position in a building.  One challenge to this approach is that the received signal strength can vary based on the phone brand and model, and the position of the phone (i.e. the height of phone owner).
 
 This project will investigate classification models to predict the location (building, floor, and location ID) on the multi-building of Jaume I University.  The data set is publicly available at the [UCI  Machine Learning repository](http://archive.ics.uci.edu/ml/datasets/UJIIndoorLoc).
 
@@ -88,7 +88,7 @@ kable(wifi_defTable, caption = 'Attribute Definitions') %>%   kable_styling(boot
 ```
   
   
-##**3 Process the Data**
+## **3 Process the Data**
 The first thing we'll do is convert all of our features to numeric data types.  This results in a matrix which we'll then convert back into a tibble.
 
 ```{r}
@@ -447,14 +447,14 @@ ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) +
   xlab('Number of Instances per Location')
 
 ```
-Clearly, locations with more instances in the data set were more likely to be correctly classified.  We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
+It appears that locations with more instances in the data set were more likely to be correctly classified.  We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
 
 ```{r}
 #-T-Test on means of instance counts for locations correctly/incorrectly classified
 t.test(ID_hitFreq$Freq, ID_misFreq$Freq,
        alternative='two.sided',conf.level = 0.95)
 ```
-Based on the result of the t-test, we can say with >95% confidence that the difference in means of the instance counts for correctly and incorrectly classifed examples is statistically signifcant.
+Based on the result of the t-test, we can say with >95% confidence that the difference in means of the instance counts for correctly and incorrectly classifed examples is indeed statistically signifcant.
 
 ###**6.2 WAPs Detected**
 To see if the WAPs detected is different for correctly and incorrectly classified locations, we'll plot the distribution of WAPs detected for each of those cases.
@@ -547,7 +547,7 @@ ggplot(phone_misFreq, aes(x=Freq)) + geom_histogram(binwidth=2,fill='blue') +
 ```
 The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitemite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
-```{r cache=TRUE, cache.lazy=FALSE}
+```{r eval=FALSE, echo=FALSE, cache=TRUE, cache.lazy=FALSE}
 s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FLOOR,
                      type='p',
                      highlight.3d = FALSE,
@@ -563,15 +563,19 @@ s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FL
                      cex.main=1.5,
                      cex.sub=1.5,
                      col.sub='blue')
+
 ```
 
 ##**7 Train Final Predictive Model**
+We'll now train a Random Forest model on data with phoneID 17 removed and see if we can improve on our previous Random Forest model's accuracy of 86%.
+
 
 ```{r}
 #-Remove data for phoneID 17 from data set
 wifi_trainData_Tsf <- filter(wifi_trainData, PHONEID != 17)
 wifi_trainData_Tsf$ID <- factor(wifi_trainData_Tsf$ID)  #-remove empty factor levels
 ```
+Again, we'll use an AWS EC2 instance to fit the Random Forest model
 
 ```{r eval=FALSE}
 #-Train Random Forest model 
@@ -588,14 +592,22 @@ rf_fit2 <- train(ID~., wifi_trainData_Tsf,
 #-Save model
 rf_fit2 <- saveRDS(rf_fit2, 'rf_fit2.rds')
 ```
+Having saved the rather large Random Forest model as a much smaller RDS file, we'll read in the RDS file so we can assess the model's performance.
 
 ```{r}
 #-Read in Random Forest model and view results
 rf_fit2 <- readRDS('rf_fit2.rds')
 ```
+Looking at the model output we can see that we've achieved 89% prediction accuaracy.  This is a significant improvement over our previous result of 86% accuracy.
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 plot(rf_fit2)
 rf_fit2$results
 ```
 
+##**8 Summary**##
+In summary, we've used the UJIIndoorLoc data set of Wi-Fi fingerprints to train and compare several classification models. The final Random Forest model achieved 89% accuracy at prediciting over 700 unique locatons across 3 buildings.
+
+Anamolous behavior of a particular phone in the data set was uncovered by selecting and visualizing misclassified instances.  Approximately 75% of the instances of phone model M1005D (PhoneID 17) were incorrectly classified.  The next closest misclassificatoin rate for a phone was 25% so it seemed likely that phoneID 17 was a legitamate performance outlier.  Upon removing instances related to that phone model, classification accuracy of the Random Forest model improved from 86% to 89%.
+
+Additional insights were gained by comparing correctly and incorrrectly classified instances.  To test the hypothesis that the number of instances is related to classification accuracy, the distributions of instance counts for correctly and incorrectly classified instances were visualized and compared.  It was found that there was a statisticaly significant  difference in the means of the two distributions.  A similar analysis of the number of wireless access points in the Wi-Fi fingerprint did not show any differnece between correctly and incorrectly classified instances.
