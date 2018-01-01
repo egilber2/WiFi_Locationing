@@ -19,14 +19,15 @@ options(knitr.table.format='html')
 
 ```
 ##**Introduction**
-Unlike outdoor positioning, which uses GPS satellites, indoor locationing with a cell phone is a challenge due to poor or no acccess to satellite signals.  An active area of research to address this problem revolves around the use of signals from Wireless Access Points (WAP's) in a building.  The approach covered in this project known as fingerprinting uses a training set of particular positions in a building and the corresponding signal strength from any and all WAP's in the vicinity.  In this way, a 'fingerprint' of WAP signal strength is produced for each position in a building.  One challenge to this approach is that the received signal strength can vary based on the phone brand and model, and the position of the phone (i.e. the height of phone owner).
+Unlike outdoor positioning, which uses GPS satellites, indoor locationing with a cell phone is a challenge due to poor or no access to satellite signals.  An active area of research to address this problem revolves around the use of signals from Wireless Access Points (WAP's) in a building.  The approach covered in this project known as fingerprinting uses a training set of particular positions in a building and the corresponding signal strength from any and all WAP's in the vicinity.  In this way, a 'fingerprint' of WAP signal strength is produced for each position in a building.  One challenge to this approach is that the received signal strength can vary based on the phone brand and model, and the position of the phone (i.e. the height of phone owner).
 
 This project will investigate classification models to predict the location (building, floor, and location ID) on the multi-building of Jaume I University.  The data set is publicly available at the [UCI  Machine Learning repository](http://archive.ics.uci.edu/ml/datasets/UJIIndoorLoc).
 
-Due to the size of the data set, models were fit to the data using Amazon Web Services' (AWS) Elastic Compute Cloud (EC2). 
+Due to the size of the data set, models were fit to the data using Amazon Web Services' (AWS) Elastic Compute Cloud (EC2).
+ 
 
 ##**1. Frame the Problem**
-The data set contains over 933 reference points or distinct positions within the buildings.  In addition to the received signal strength of the 520 possible WAP's, a fingerprint for a location contains the building, floor, SpaceID, relative position to the SpaceID, and the latitude/longitude coordinates.  The SpaceID is essentially a room within a building while the relative position to the SpaceID is a location either inside the room or at the entrance in the hallway.  It was initially decided to use only the the positions outside of a spaces as part of a location ID. To frame this as a classification problem, a unique location ID needs to be created for each reference point.  
+The data set contains over 933 reference points or distinct positions within the buildings.  In addition to the received signal strength of the 520 possible WAP's, a fingerprint for a location contains the building, floor, SpaceID, relative position to the SpaceID, and the latitude/longitude coordinates.  The SpaceID is essentially a room within a building while the relative position to the SpaceID is a location either inside the room or at the entrance in the hallway.  It was initially decided to use only the positions outside of a space as part of a location ID. To frame this as a classification problem, a unique location ID needs to be created for each reference point.  
 
 ##**2. Collect the Data** 
 First we'll load the packages that will be used in this analysis.
@@ -66,7 +67,7 @@ The dim() function tells us the dimensions of the data set which has 19937 insta
 
 
 ###**2.2 Inspect Data**
-We'll use the glimpse() funtion to get a quick look at the data.  The output is a transposed version of the data with the columns shown as rows so it's possible to see all of the features if needed.  In this case, we know the first 520 columns are the individual wireless access points (WAP's) so the data has been sliced to just show the last 20 features of the data set.
+We'll use the glimpse() function to get a quick look at the data.  The output is a transposed version of the data with the columns shown as rows so it's possible to see all the features if needed.  In this case, we know the first 520 columns are the individual wireless access points (WAP's) so the data has been sliced to just show the last 20 features of the data set.
 
 ```{r}
 
@@ -74,7 +75,7 @@ We'll use the glimpse() funtion to get a quick look at the data.  The output is 
 glimpse(wifi_data[,510:529])
 
 ```
-We can see that all of the reference point location information is found in the last 9 features.  We can also see that there are several things that need to be addressed when we process the data.  For instance, the second column above shows the data type for each feature.  Several of them are strings (<chr>) when they should be numeric.  There are going to be many missing values for the WAP readings which makes sense as only a small subset of the WAPs will be detected for each location.  However, we'll need a strategy for how to deal with these missing values prior to building our predictive models.
+  We can see that all the reference point location information is found in the last 9 features.  We can also see that there are several things that need to be addressed when we process the data.  For instance, the second column above shows the data type for each feature.  Several of them are strings (<chr>) when they should be numeric.  There are going to be many missing values for the WAP readings which makes sense as only a small subset of the WAPs will be detected for each location.  However, we'll need a strategy for how to deal with these missing values prior to building our predictive models.
 
 ```{r message=FALSE, cache=TRUE, cache.lazy=FALSE}
 #-Read in CSV file of Attribute Definitions
@@ -89,7 +90,7 @@ kable(wifi_defTable, caption = 'Attribute Definitions') %>%   kable_styling(boot
   
   
 ## **3 Process the Data**
-The first thing we'll do is convert all of our features to numeric data types.  This results in a matrix which we'll then convert back into a tibble.
+The first thing we'll do is convert all our features to numeric data types.  This results in a matrix which we'll then convert back into a tibble.
 
 ```{r}
 #-convert features to numeric
@@ -124,7 +125,7 @@ wifi_trainData$WAP_num <- apply(wifi_trainData[,1:520], 1,
                                 function(x) length(which(!is.na(x))))
 ```
 
-Next, we'll filter the data set such that it only contains locations outside of spaces (i.e corridor).
+Next, we'll filter the data set such that it only contains locations outside of spaces (i.e. corridor).
 
 ```{r}
 #-Filter on hallway positions
@@ -142,14 +143,14 @@ wifi_trainData$ID <- wifi_trainData %>%
 #-Convert ID variable to categorical
 wifi_trainData$ID <- factor(wifi_trainData$ID)
 ```
-To determine how many different classess we have for classification, we can use the nlevels() function on the ID variable.
+To determine how many different classes we have for classification, we can use the nlevels() function on the ID variable.
 
 ```{r}
 #-Count of ID classes for classification
 nlevels(wifi_trainData$ID)
 ```
 
-Next we'll remove any variables that contain only NA values.
+Next, we'll remove any variables that contain only NA values.
 ```{r message=FALSE}
 #-Remove columns with all NA values
 wifi_trainData <- wifi_trainData[,colSums(is.na(wifi_trainData[1:16608,]))<nrow(wifi_trainData[1:16608,])]
@@ -165,7 +166,7 @@ wifi_trainData <- wifi_trainData[rowSums(is.na(wifi_trainData[,1:444])) != ncol(
 #removes 55 rows
 ```
 
-Finally, we will address the many missing values in the data set which are currently a placeholder for the absence of a signal from a WAP. The values for the signal range from -104 to 0 dBm with 0 being the strongest signal and -104 being the weakest.  The original data set used the value of +100 to code for the absence of signal.  However, we'll use a  value of -110 dBm to represent no signal from a WAP as it corresponds to a signal that is weaker than any WAP signal in the data set.
+Finally, we will address the many missing values in the data set which are currently a placeholder for the absence of a signal from a WAP. The values for the signal range from -104 to 0 dBm with 0 being the strongest signal and -104 being the weakest.  The original data set used the value of +100 to code for the absence of signal.  However, we'll use a value of -110 dBm to represent no signal from a WAP as it corresponds to a signal that is weaker than any WAP signal in the data set.
 
 ```{r}
 #convert NA's to -110
@@ -173,7 +174,7 @@ wifi_trainData[is.na(wifi_trainData)] <- -110
 ```
 
 ##**4. Explore the Data**
-Now that we've cleaned up the data set we'll prepare some visualizations to help us understand the data.  The image below is a satellite picture of the 3-building complex where the Wi-Fi fingerprint data was obtained.  The get_map() and ggmap() functions were used to import and plot the image.
+Now that we've cleaned up the data set we'll prepare some visualizations to help us understand the data.  The image below is a satellite picture of the 3-building complex where the Wi-Fi fingerprint data was obtained.  The get_map() and ggmap() functions were used to create and plot the image.
 
 ```{r message=FALSE, cache=TRUE, cache.lazy=FALSE}
 #-Define latitude and longitude coordinates for image location
@@ -193,7 +194,7 @@ ggmap(myMap, extent='panel')
 
 ```
 
-We can use the latitude and longitude data in the data set to plot the location reference points of each building by floor.  The builings (0, 1, and 2) are aligned left to right as they are shown in the satellite image.  
+We can use the latitude and longitude data in the data set to plot the location reference points of each building by floor.  The buildings (0, 1, and 2) are aligned left to right as they are shown in the satellite image.  
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 #3D image of reference point locations in data set
@@ -230,9 +231,9 @@ ggplot(ID_freq, aes(x = Freq)) +
   theme(text = element_text(size=14)) +
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
-The instance count for locations ranges from a minumum of 2 to a maximum of 90 with 20 being the most common number of instances for a location.  
+The instance count for locations ranges from a minimum of 2 to a maximum of 90 with 20 being the most common number of instances for a location. We can look back after running our predictive models to determine if there's any correlation between instance counts and classfication accuracy.
 
-We can also visualize how the number of WAPs detected varies across the 3 buildings and across floors.  The boxplot below shows the distribution of WAPs across the buildings.  Building 3 has the highest median detected WAPs whereas Building 0 and 1 appear to have similar medians.  The distribution in building 1 also reaches to the lower end of WAPs detected relative to the other buildings. 
+We can also visualize how the number of WAPs detected varies across the 3 buildings and across floors.  The boxplot below shows the distribution of WAPs across the buildings.  Building 3 has the highest median detected WAPs whereas Building 0 and 1 appear to have similar medians.  The distribution in building 1 also reaches to the lower end of WAPs detected relative to the other buildings.
 
 
 
@@ -245,7 +246,7 @@ ggplot(wifi_trainData, aes(x=BUILDINGID, y=WAP_num)) +
   labs(x="Building Number", y= 'WAP Counts' ) +
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
-We can also look at the distribution of WAPs detected by building and floor.  The resulting histogram shows some slight differences between buildings.  For one, building 2 is the only one with a 5th floor and it also has spikes in WAPs detected at 17 and 28.  The distribution of WAPs detected in building 1 is more spread out than the other buildings with more occcurences of WAPs detected at the low end.  We can look back after running our predictive models to see if there is any relationship between the number of WAPs detected and accuracy.
+We can also look at the distribution of WAPs detected by building and floor.  The resulting histogram shows some slight differences between buildings.  For one, building 2 is the only one with a 5th floor and it also has spikes in WAPs detected at 17 and 28.  The distribution of WAPs detected in building 1 is more spread out than the other buildings with more occurrences of WAPs detected at the low end.  We can look back after running our predictive models to see if there is any relationship between the number of WAPs detected and accuracy.
 
 
 ```{r cache=TRUE, cache.lazy=FALSE}
@@ -266,7 +267,7 @@ Now that we've cleaned and visualized the data, we can remove attributes that wo
 #-Remove unneeded variables prior to model fitting
 wifi_train <- select(wifi_trainData, -RELATIVEPOSITION, -USERID, -WAP_num, -PHONEID, -TIMESTAMP, -LONGITUDE, -LATITUDE, -BUILDINGID, -SPACEID, -FLOOR)
 ```
-Using the trainControl() function, we can set many paramaters used in the model fitting step by the train() function.  The *method* argument sets the resampling technique which in this case is repeated cross validation (CV) or repeatedcv.  The *number* argument sets the number of folds in the k-fold-CV which will then be repeated 3 times.  The final parameter allows us to reproducibly set the seed for work going on during parallel processing.
+Using the trainControl() function, we can set many parameters used in the model fitting step by the train() function.  The *method* argument sets the resampling technique which in this case is repeated cross validation (CV) or repeatedcv.  The *number* argument sets the number of folds in the k-fold-CV which will then be repeated 3 times.  The allowParallel argument allows to take advantage of R's parallel processing capabilities.  The final parameter allows us to reproducibly set the seed for work going on during parallel processing.
 
 ```{r}
 #-Assign values in seeds agrument of trainControl
@@ -312,7 +313,7 @@ knn_fit <- saveRDS(knn_fit, 'knn_fit.rds')
 ```
 
 ####**Assess k-NN Model**
-The plot below shows the cross validated accuracy as it relates to the number of neighbors for the k-NN model.  The best result was observed at k=1 with 77.4% accuracy.  
+The plot below shows the cross validated accuracy as it relates to the number of neighbors for the k-NN model.  The best result was observed at k=1 with 77.4% accuracy.
 
 ```{r}
 #-Read in model and view results
@@ -363,7 +364,7 @@ dtree_fit$results
 Finally, we'll take a look at a Random Forest classifier.
 
 ####**Fit RF Model**
-We'll use the ranger package to train a Random Forest model which is a good choice for high dimensional data.  
+We'll use the ranger package to train a Random Forest model which is a good choice for high dimensional data.
 
 ```{r eval=FALSE}
 #-Train Random Forest model
@@ -409,7 +410,7 @@ We can see that the Random Forest model outperformed the decision tree (C5.0) an
 
 ##**6 Explore Location Classification Results**{.tabset}
 ###**6.1 Instances per Location**
-Using the Random Forest model, we can try to understand what is driving the incorrect classification of locations.  
+Using the Random Forest model, we can try to understand what is driving the incorrect classification of locations.  First we'll select out correctly and incorrectly classified instances from the training data by using elements stored in the Random Forest model.
 
 ```{r results='hide'}
 #-Select instances that were correctly classifed in rf model
@@ -425,7 +426,7 @@ rf_mis$ID <- factor(rf_mis$ID)  #-Remove empty factor levels
 nlevels(rf_mis$ID)  #598 levels
 
 ```
-We can look at the distribution of instance counts for correctly and incorrectly classified instances.  First we'll make data frames of instance counts for correctly and incorrectly classified locations.
+We can look at the distribution of instance counts for correctly and incorrectly classified instances.  First, we'll make data frames of instance counts for correctly and incorrectly classified locations.
 
 ```{r}
 #-Create data frames of instance counts at locations for correctly and incorrectly classified
@@ -454,7 +455,7 @@ It appears that locations with more instances in the data set were more likely t
 t.test(ID_hitFreq$Freq, ID_misFreq$Freq,
        alternative='two.sided',conf.level = 0.95)
 ```
-Based on the result of the t-test, we can say with >95% confidence that the difference in means of the instance counts for correctly and incorrectly classifed examples is indeed statistically signifcant.
+Based on the result of the t-test, we can say with >95% confidence that the difference in means of the instance counts for correctly and incorrectly classified examples is indeed statistically significant.
 
 ###**6.2 WAPs Detected**
 To see if the WAPs detected is different for correctly and incorrectly classified locations, we'll plot the distribution of WAPs detected for each of those cases.
@@ -496,7 +497,7 @@ x <- merge(x=phone_hit, y=phone_mis, by = 'PhoneID')
 y <- mutate(x, Percent_miss = round(Count_miss/(Count_miss + Count_hit)*100,3))
 ```
 
-Plotting the percent misclassified by phone ID shows that phone ID 17 was a particularly poor performer.  In fact, that phone resulted in almost 75% misclassified locations.
+Plotting the percent misclassified by phone ID shows that phone ID 17 was a particularly poor performer.  In fact, instances with that phone resulted in almost 75% misclassified locations.
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 
@@ -509,7 +510,7 @@ ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
   ylim(0,100) +
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
-Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D.  
+Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D. No other use 
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 #-Prepare table of phoneID
@@ -522,7 +523,7 @@ kable(phoneID_table) %>%
                 font_size = 14) %>% 
   row_spec(18, bold=T, background = 'yellow')
 ```
-We showed earlier that the number of instances per location was positively correlated with classification accuracy.  To see if that is what is driving the poor accuracy with this particular phone, we can look at the distribution of instances for misclassified examples.
+We showed earlier that the number of instances per location seemed correlated with classification accuracy.  To see if that is what is driving the poor accuracy with this particular phone, we can look at the distribution of instances for misclassified examples.
 
 ```{r}
 #-Select only misclassified examples with phoneID=17 
@@ -545,7 +546,7 @@ ggplot(phone_misFreq, aes(x=Freq)) + geom_histogram(binwidth=2,fill='blue') +
   ggtitle('Number of Instances at Misclassified Locations with PhoneID 17')+
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
-The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitemite outlier so we will remove its contribution to the data set and retrain the Random Forest model.
+The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitimate outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
 ```{r eval=FALSE, echo=FALSE, cache=TRUE, cache.lazy=FALSE}
 s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FLOOR,
@@ -598,7 +599,7 @@ Having saved the rather large Random Forest model as a much smaller RDS file, we
 #-Read in Random Forest model and view results
 rf_fit2 <- readRDS('rf_fit2.rds')
 ```
-Looking at the model output we can see that we've achieved 89% prediction accuaracy.  This is a significant improvement over our previous result of 86% accuracy.
+Looking at the model output we can see that we've achieved 89% prediction accuracy.  This is a significant improvement over our previous result of 86% accuracy.
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 plot(rf_fit2)
@@ -606,8 +607,8 @@ rf_fit2$results
 ```
 
 ##**8 Summary**##
-In summary, we've used the UJIIndoorLoc data set of Wi-Fi fingerprints to train and compare several classification models. The final Random Forest model achieved 89% accuracy at prediciting over 700 unique locatons across 3 buildings.
+In summary, we've used the UJIIndoorLoc data set of Wi-Fi fingerprints to train and compare several classification models. The final Random Forest model achieved 89% accuracy at predicting over 700 unique locations across 3 buildings.
 
-Anamolous behavior of a particular phone in the data set was uncovered by selecting and visualizing misclassified instances.  Approximately 75% of the instances of phone model M1005D (PhoneID 17) were incorrectly classified.  The next closest misclassificatoin rate for a phone was 25% so it seemed likely that phoneID 17 was a legitamate performance outlier.  Upon removing instances related to that phone model, classification accuracy of the Random Forest model improved from 86% to 89%.
+Anomalous behavior of a particular phone in the data set was uncovered by selecting and visualizing misclassified instances.  Approximately 75% of the instances of phone model M1005D (PhoneID 17) were incorrectly classified.  The next closest misclassification rate for a phone was 25% so it seemed likely that phoneID 17 was a legitimate performance outlier.  Upon removing instances related to that phone model, classification accuracy of the Random Forest model improved from 86% to 89%.
 
-Additional insights were gained by comparing correctly and incorrrectly classified instances.  To test the hypothesis that the number of instances is related to classification accuracy, the distributions of instance counts for correctly and incorrectly classified instances were visualized and compared.  It was found that there was a statisticaly significant  difference in the means of the two distributions.  A similar analysis of the number of wireless access points in the Wi-Fi fingerprint did not show any differnece between correctly and incorrectly classified instances.
+Additional insights were gained by comparing correctly and incorrectly classified instances.  To test the hypothesis that the number of instances is related to classification accuracy, the distributions of instance counts for correctly and incorrectly classified instances were visualized and compared.  It was found that there was a statistically significant difference in the means of the two distributions.  A similar analysis of the number of wireless access points in the Wi-Fi fingerprint did not show any difference between correctly and incorrectly classified instances.
