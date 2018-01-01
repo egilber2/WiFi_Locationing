@@ -35,24 +35,24 @@ First we'll load the packages that will be used in this analysis.
 ```{r  message=FALSE, warning=FALSE}
 #-Load packages
 
-library(caret)      #R modeling workhorse & ggplot2
-library(tidyverse)  #Package for tidying datalibrary(magrittr)   #Enables piping
+library(caret)       #R modeling workhorse & ggplot2
+library(tidyverse)   #Package for tidying data
 #library(Hmisc)      #for descriptive statistics
-library(parallel)
-library(doParallel)
-library(kknn)       #Weighted k-NN
-library(kernlab)    #For SVMLinear method
-library(rgl)        #for 3D plotting
-library(scatterplot3d)
-library(scales)
-library(ranger)     #Random forest
-library(C50)        #C5.0 decision tree with boosting
-library(e1071)      #Random forest
+library(parallel)    #parallel computing package
+library(doParallel)  #parallel computing
+library(kknn)        #Weighted k-NN
+library(kernlab)     #For SVMLinear method
+library(rgl)         #for 3D plotting
+library(scatterplot3d) #3D scatterplots
+library(scales)      #plot scaling methods
+library(ranger)      #Random forest
+library(C50)         #C5.0 decision tree with boosting
+library(e1071)       #Random forest
 #library(doMC)
-library(broom)
-library(kableExtra)
-library(ggmap)
-library(knitr)
+library(broom)       #Tidy statistical output
+library(kableExtra)  #fancy table generator
+library(ggmap)       #plots objects from get_map()
+library(knitr)       #report generation
 ```
 
 ###**2.1 Load Data Set**
@@ -260,7 +260,7 @@ ggplot(wifi_trainData, aes(x=WAP_num, fill=FLOOR)) + geom_bar() +
 ```
 
 
-##**5.  Build Predictive Models** {.tabset .tabset-pills}
+##**5.  Build Predictive Models** 
 Now that we've cleaned and visualized the data, we can remove attributes that won't be needed in a predictive model.  In the end, all we will need is our dependent variable (ID) and the 520 WAP variables that make up the Wi-Fi fingerprint for the location ID.
 
 ```{r}
@@ -408,7 +408,7 @@ bwplot(results)
 ```
 We can see that the Random Forest model outperformed the decision tree (C5.0) and k-NN models.  
 
-##**6 Explore Location Classification Results**{.tabset}
+##**6 Explore Location Classification Results**
 ###**6.1 Instances per Location**
 Using the Random Forest model, we can try to understand what is driving the incorrect classification of locations.  First we'll select out correctly and incorrectly classified instances from the training data by using elements stored in the Random Forest model.
 
@@ -510,7 +510,7 @@ ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
   ylim(0,100) +
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
-Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D. No other use 
+Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D. UserID 13 was the only individual in the data set using this paricular Android phone model.
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 #-Prepare table of phoneID
@@ -576,7 +576,7 @@ We'll now train a Random Forest model on data with phoneID 17 removed and see if
 wifi_trainData_Tsf <- filter(wifi_trainData, PHONEID != 17)
 wifi_trainData_Tsf$ID <- factor(wifi_trainData_Tsf$ID)  #-remove empty factor levels
 ```
-Again, we'll use an AWS EC2 instance to fit the Random Forest model
+Again, we'll use an AWS EC2 instance to fit the Random Forest model.
 
 ```{r eval=FALSE}
 #-Train Random Forest model 
