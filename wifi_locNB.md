@@ -50,7 +50,7 @@ First we'll load the packages that will be used in this analysis.
 
 library(caret)  #R modeling workhorse & ggplot2
 library(tidyverse)  #Package for tidying data
-# library(Hmisc) #for descriptive statistics
+library(Hmisc)  #for descriptive statistics
 library(parallel)  #parallel computing package
 library(doParallel)  #parallel computing
 library(kknn)  #Weighted k-NN
@@ -617,7 +617,9 @@ summary(results)
 bwplot(results)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-31-1.png) We can see that the Random Forest model outperformed the decision tree (C5.0) and k-NN models.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-31-1.png)
+
+We can see that the Random Forest model outperformed the decision tree (C5.0) and k-NN models.
 
 **6 Explore Location Classification Results**
 ---------------------------------------------
@@ -657,11 +659,11 @@ We can then overlay the distributions in the same plot.
 ggplot(ID_hitFreq, aes(x = Freq, fill = "Correct")) + geom_histogram(binwidth = 2) + 
     geom_histogram(data = ID_misFreq, aes(x = Freq, fill = "Incorrect"), alpha = 0.4, 
         binwidth = 2) + scale_fill_manual(values = c(Correct = "green", Incorrect = "blue")) + 
-    labs(fill = "Prediction") + theme(panel.border = element_rect(colour = "black", 
+    labs(fill = "Prediction") + theme(text = element_text(size = 14)) + theme(panel.border = element_rect(colour = "black", 
     fill = NA)) + ggtitle("Distribution of Instances per Location") + xlab("Number of Instances per Location")
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-34-1.png) It appears that locations with more instances in the data set were more likely to be correctly classified. We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-35-1.png) It appears that locations with more instances in the data set were more likely to be correctly classified. We can run a t-test to determine if the difference in means of the instance counts is statistically significant.
 
 ``` r
 #-T-Test on means of instance counts for locations correctly/incorrectly classified
@@ -691,11 +693,11 @@ To see if the WAPs detected is different for correctly and incorrectly classifie
 ggplot(rf_hit, aes(WAP_num, fill = "Correct")) + geom_histogram(binwidth = 2) + 
     geom_histogram(data = rf_mis, aes(WAP_num, fill = "Incorrect"), alpha = 0.7, 
         binwidth = 2) + scale_fill_manual(values = c(Correct = "green", Incorrect = "blue")) + 
-    labs(fill = "Prediction") + theme(panel.border = element_rect(colour = "black", 
+    labs(fill = "Prediction") + theme(text = element_text(size = 14)) + theme(panel.border = element_rect(colour = "black", 
     fill = NA)) + ggtitle("Distribution of WAPs detected per Location") + xlab("Number of WAPs per Location")
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-36-1.png) It seems that the number of WAPs detected has nothing to do with whether or not a location is correctly or incorrectly predicted by our Random Forest model.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-37-1.png) It seems that the number of WAPs detected has nothing to do with whether or not a location is correctly or incorrectly predicted by our Random Forest model.
 
 ### **6.3 Phone ID**
 
@@ -727,11 +729,11 @@ Plotting the percent misclassified by phone ID shows that phone ID 17 was a part
 #-Plot percent miscalssified by phone ID
 ggplot(y, aes(x = factor(PhoneID), y = Percent_miss)) + geom_bar(stat = "identity", 
     fill = "blue", colour = "black") + ggtitle("Percent of Incorrectly Classified Instances by PhoneID") + 
-    xlab("Phone ID") + ylab("Percent Misclassified") + ylim(0, 100) + theme(panel.border = element_rect(colour = "black", 
-    fill = NA))
+    xlab("Phone ID") + ylab("Percent Misclassified") + theme(text = element_text(size = 14)) + 
+    ylim(0, 100) + theme(panel.border = element_rect(colour = "black", fill = NA))
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-38-1.png) Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D. UserID 13 was the only individual in the data set using this paricular Android phone model.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-39-1.png) Looking at the descriptions for the phones used in the preparation of the data set, we can see that the phone with an ID=17 is an Android device with the model number M10005D. UserID 13 was the only individual in the data set using this paricular Android phone model.
 
 ``` r
 #-Prepare table of phoneID
@@ -1135,7 +1137,7 @@ ggplot(phone_misFreq, aes(x = Freq)) + geom_histogram(binwidth = 2, fill = "blue
     theme(panel.border = element_rect(colour = "black", fill = NA))
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-42-1.png) The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17. This phone does seem to be a legitimate outlier so we will remove its contribution to the data set and retrain the Random Forest model.
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-43-1.png) The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17. This phone does seem to be a legitimate outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
 **7 Train Final Predictive Model**
 ----------------------------------
@@ -1177,7 +1179,7 @@ Looking at the model output we can see that we've achieved 89% prediction accura
 plot(rf_fit2)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-47-1.png)
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-48-1.png)
 
 ``` r
 rf_fit2$results
