@@ -1,0 +1,86 @@
+/*
+ * data.css
+ *
+ * Copyright (C) 2009-12 by RStudio, Inc.
+ *
+ * This program is licensed to you under the terms of version 3 of the
+ * GNU Affero General Public License. This program is distributed WITHOUT
+ * ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING THOSE OF NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Please refer to the
+ * AGPL (http://www.gnu.org/licenses/agpl-3.0.txt) for more details.
+ *
+ */
+
+
+body {
+  margin: 0;
+  padding: 0;
+}
+table {
+  border-collapse: collapse;
+  margin: 0;
+  border: none;
+  box-shadow: 5px 5px 17px 0px rgba(0,0,0,0.4);
+  font-size: 12px;
+  text-align: left;
+}
+th, td {
+  font-size: 12px;
+  border: 1px solid #DDD;
+  padding: 3px 12px 3px 6px;
+  white-space: pre;
+}
+th {
+  text-align: left;
+}
+
+td {
+  font-family: Consolas, Lucida Console, Monaco, monospace;
+}
+thead th, .rn, #origin {
+  font-family: Segoe UI, Lucida Grande, Verdana, Helvetica;
+  background-color: #F0F0F0;
+  font-weight: bold;
+  color: #555;
+}
+.rn, #origin {
+  text-align: right;
+  border-left: none;
+}
+#left {
+  left:-8.33%;
+  text-align: left;
+  float: left;
+  width:50%;
+  z-index:-10;
+}
+#right {
+  left:31.25%;
+  top: 75px;
+  float: right;
+  text-align: right;
+  z-index:-10;
+  width:50%;
+}
+body { /* Normal  */
+   font-size: 16px;
+}
+code.r{ /* Code block */
+  font-size: 14px;
+}
+img {
+   display:inline-block;
+   position:relative;
+   border:1px solid #ccc;
+   padding:5px;
+   background:#f2f2f2;
+   margin-bottom:30px;
+   box-shadow: 5px 5px 17px 0px rgba(0,0,0,0.4);
+   font-size: 12px;
+   text-align: left;
+}
+list {
+  box-shadow: 5px 5px 17px 0px rgba(0,0,0,0.4);
+  text-align: left;
+  font-size: 12px;
+}
