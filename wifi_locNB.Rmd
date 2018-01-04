@@ -1,15 +1,16 @@
 ---
 title: "Wi-Fi Locationing"
 output: 
+  github_document:
+    toc: yes
+    toc_depth: 4
   html_notebook:
     highlight: tango
     theme: cerulean
     toc: yes
     toc_float: yes
     toc_depth: 4
-  github_document:
-    toc: yes
-    toc_depth: 4
+    css: style.css
 ---
 
 
@@ -37,7 +38,7 @@ First we'll load the packages that will be used in this analysis.
 
 library(caret)       #R modeling workhorse & ggplot2
 library(tidyverse)   #Package for tidying data
-#library(Hmisc)      #for descriptive statistics
+library(Hmisc)      #for descriptive statistics
 library(parallel)    #parallel computing package
 library(doParallel)  #parallel computing
 library(kknn)        #Weighted k-NN
@@ -85,7 +86,6 @@ wifi_defTable <- read.csv('Wifi_Attribute_Definitions.csv')
 kable(wifi_defTable, caption = 'Attribute Definitions') %>%   kable_styling(bootstrap_options = c('striped', 'hover', 'responsive', 'bordered'), 
                 full_width = F, 
                 font_size = 14)
-
 ```
   
   
@@ -405,7 +405,15 @@ results <- resamples(list(kNN=knn_fit,
 
 summary(results)
 bwplot(results)
+
 ```
+```{r echo=FALSE, eval=FALSE}
+bwplot(results)
+dev.copy(png, 'resamplesPlot.png')
+dev.off()
+```
+
+
 We can see that the Random Forest model outperformed the decision tree (C5.0) and k-NN models.  
 
 ##**6 Explore Location Classification Results**
@@ -443,6 +451,7 @@ ggplot(ID_hitFreq, aes(x=Freq, fill='Correct')) +
                  alpha=0.4, binwidth=2) +
   scale_fill_manual(values=c('Correct'='green', 'Incorrect'='blue')) +
   labs(fill='Prediction') +
+  theme(text = element_text(size=14)) +
   theme(panel.border=element_rect(colour='black', fill=NA)) +
   ggtitle('Distribution of Instances per Location') +
   xlab('Number of Instances per Location')
@@ -468,6 +477,7 @@ ggplot(rf_hit, aes(WAP_num, fill='Correct')) +
                  alpha=0.7, binwidth = 2) +
   scale_fill_manual(values=c('Correct'='green', 'Incorrect'='blue')) +
   labs(fill='Prediction') +
+  theme(text = element_text(size=14)) +
   theme(panel.border=element_rect(colour='black', fill=NA)) +
   ggtitle('Distribution of WAPs detected per Location') +
   xlab('Number of WAPs per Location')
@@ -507,6 +517,7 @@ ggplot(y, aes(x=factor(PhoneID), y= Percent_miss)) +
   ggtitle('Percent of Incorrectly Classified Instances by PhoneID')+
   xlab('Phone ID') +
   ylab('Percent Misclassified') +
+  theme(text = element_text(size=14)) +
   ylim(0,100) +
   theme(panel.border=element_rect(colour='black', fill=NA))
 ```
@@ -548,24 +559,6 @@ ggplot(phone_misFreq, aes(x=Freq)) + geom_histogram(binwidth=2,fill='blue') +
 ```
 The number of instances does not seem to be driving the poor accuracy obtained with PhoneID 17.  This phone does seem to be a legitimate outlier so we will remove its contribution to the data set and retrain the Random Forest model.
 
-```{r eval=FALSE, echo=FALSE, cache=TRUE, cache.lazy=FALSE}
-s3d <- scatterplot3d(phone_mis17$LONGITUDE, phone_mis17$LATITUDE, phone_mis17$FLOOR,
-                     type='p',
-                     highlight.3d = FALSE,
-                     color='blue',
-                     angle=130,
-                     pch=5,
-                     box=FALSE,
-                     zlim=c(1,5),
-                     main = 'Misclassified Locations by PhoneID 17',
-                     sub='Random Forest Model',
-                     xlab='Longitude', ylab='Latitude',zlab = 'Floor',
-                     cex.lab = 1.5,
-                     cex.main=1.5,
-                     cex.sub=1.5,
-                     col.sub='blue')
-
-```
 
 ##**7 Train Final Predictive Model**
 We'll now train a Random Forest model on data with phoneID 17 removed and see if we can improve on our previous Random Forest model's accuracy of 86%.
