@@ -1179,7 +1179,7 @@ Looking at the model output we can see that we've achieved 89% prediction accura
 plot(rf_fit2)
 ```
 
-![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-48-1.png)
+![](wifi_locNB_files/figure-markdown_github/unnamed-chunk-47-1.png)
 
 ``` r
 rf_fit2$results
